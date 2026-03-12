@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -34,6 +35,7 @@ func InitDB() {
 
 	DB.SetMaxOpenConns(10)
 	DB.SetMaxIdleConns(5)
+	DB.SetConnMaxLifetime(time.Minute * 5)
 
 	fmt.Println("Connection successfully")
 	createTables()
@@ -44,7 +46,8 @@ func createTables() {
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
 		username VARCHAR(255) NOT NULL,
-		password TEXT NOT NULL
+		password TEXT NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL
 	)
   `
 

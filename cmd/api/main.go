@@ -3,19 +3,15 @@ package main
 import (
 	"fmt"
 	"go-api/cmd/api/db"
-	"go-api/cmd/api/utils"
-	"net/http"
+	userHandler "go-api/cmd/api/handlers/user"
+	"go-api/internal/services/user"
+
+	postgresRepo "go-api/internal/repositories/postgresql/user"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
-
-type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
 
 func main() {
 
@@ -27,56 +23,23 @@ func main() {
 	}
 
 	db.InitDB()
+	defer db.DB.Close()
 
 	server := gin.Default()
 
-	server.POST("/users", func(ctx *gin.Context) {
-		var user User
+	postgresRepo := postgresRepo.Repository{
+		Client: db.DB,
+	}
 
-		err := ctx.ShouldBindJSON(&user)
+	userService := user.UserService{
+		Repository: postgresRepo,
+	}
 
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"ok":      false,
-				"message": "Bad Request",
-				"error":   "Invalid data",
-			})
-			return
-		}
+	usersHandler := userHandler.Handler{
+		UserService: userService,
+	}
 
-		query := "INSERT INTO users(username, password) VALUES ($1, $2) RETURNING id"
-
-		hashedPassword, err := utils.HashPassword(user.Password)
-
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"ok":      false,
-				"message": "Bad Request",
-				"error":   "Hashed password failed",
-			})
-			return
-		}
-
-		err = db.DB.QueryRow(query, user.Username, hashedPassword).Scan(&user.ID)
-
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"ok":      false,
-				"message": "Bad Request",
-				"error":   "Query failed",
-			})
-			return
-		}
-
-		ctx.JSON(http.StatusOK, gin.H{
-			"ok":      true,
-			"message": "Success",
-			"data": gin.H{
-				"id":       user.ID,
-				"username": user.Username,
-			},
-		})
-	})
+	server.POST("/users", usersHandler.CreateUser)
 
 	port := os.Getenv("PORT")
 	err = server.Run(":" + port)
