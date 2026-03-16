@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"go-api/cmd/api/db"
-	userHandler "go-api/cmd/api/handlers/user"
 	"go-api/internal/services/user"
 
-	postgresRepo "go-api/internal/repositories/postgresql/user"
 	"os"
+
+	postgresRepo "go-api/internal/repositories/postgresql/user"
+
+	userHandler "go-api/cmd/api/handlers/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -27,9 +29,7 @@ func main() {
 
 	server := gin.Default()
 
-	postgresRepo := postgresRepo.Repository{
-		Client: db.DB,
-	}
+	postgresRepo := postgresRepo.NewResposity(db.DB)
 
 	userService := user.UserService{
 		Repository: postgresRepo,

@@ -1,43 +1,44 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"os"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var DB *sql.DB
+var DB *pgxpool.Pool
 
 func InitDB() {
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-
-	source := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbName)
-
 	var err error
 
-	DB, err = sql.Open("pgx", source)
+	ctx := context.Background()
+
+	config, err := pgxpool.ParseConfig(os.Getenv("DB_URL"))
 
 	if err != nil {
-		panic("Database configuration failed!")
+		panic("Connection failed...")
 	}
 
-	err = DB.Ping()
+	config.MaxConns = 10
+	config.MinConns = 2
+	config.MaxConnIdleTime = 30 * time.Minute
+
+	DB, err = pgxpool.NewWithConfig(ctx, config)
+
 	if err != nil {
-		panic("Database connection failed!")
+		panic("Connection failed...")
 	}
 
-	DB.SetMaxOpenConns(10)
-	DB.SetMaxIdleConns(5)
-	DB.SetConnMaxLifetime(time.Minute * 5)
+	err = DB.Ping(ctx)
 
-	fmt.Println("Connection successfully")
+	if err != nil {
+		panic("Connection failed...")
+	}
+
+	fmt.Println("Connection successfully...")
 	createTables()
 }
 
@@ -51,7 +52,7 @@ func createTables() {
 	)
   `
 
-	_, err := DB.Exec(createUsersTable)
+	_, err := DB.Exec(context.Background(), createUsersTable)
 
 	if err != nil {
 		panic("Could not create users table.")

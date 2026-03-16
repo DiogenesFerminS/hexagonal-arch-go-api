@@ -21,7 +21,9 @@ func (h Handler) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	userId, err := h.UserService.Create(userDto)
+	c := ctx.Request.Context()
+
+	userId, err := h.UserService.Create(c, userDto)
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
